@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using LibGC.Texture;
 using UnityEngine;
 
 namespace MODFile
@@ -23,7 +24,9 @@ namespace MODFile
     {
         Repeat = 0,
         WrapS_UseClamp = 1, // If not set, use repeat
-        WrapT_UseClamp = 0x100 // If not set, use repeat
+        WrapT_UseClamp =
+            0x100 // If not set, use repeat
+        ,
     };
 
     [Serializable]
@@ -120,6 +123,53 @@ namespace MODFile
 
             int dataSize = reader.ReadInt32BE();
             Data = reader.ReadBytes(dataSize);
+        }
+
+        public Texture2D ConvertToUnityTexture(TextureAttributes textureAttr)
+        {
+            GcTextureFormatCodec tex;
+            switch (Format)
+            {
+                case TextureFormat.RGB565:
+                    tex = new GcTextureFormatCodecRGB565();
+                    break;
+                case TextureFormat.CMPR:
+                    tex = new GcTextureFormatCodecCMPR();
+                    break;
+                case TextureFormat.RGB5A3:
+                    tex = new GcTextureFormatCodecRGB5A3();
+                    break;
+                case TextureFormat.I4:
+                    tex = new GcTextureFormatCodecI4();
+                    break;
+                case TextureFormat.I8:
+                    tex = new GcTextureFormatCodecI8();
+                    break;
+                case TextureFormat.IA4:
+                    tex = new GcTextureFormatCodecIA4();
+                    break;
+                case TextureFormat.IA8:
+                    tex = new GcTextureFormatCodecIA8();
+                    break;
+                case TextureFormat.RGBA32:
+                    tex = new GcTextureFormatCodecRGBA8();
+                    break;
+                default:
+                    Debug.LogError("Unknown texture format: " + Format);
+                    return null;
+            }
+
+            Texture2D newTex = new(Width, Height, UnityEngine.TextureFormat.RGBA32, false);
+
+            byte[] destData = new byte[Width * Height * 4];
+            tex.DecodeTexture(destData, 0, Width, Height, Width * 4, Data, 0, null, 0);
+
+            newTex.LoadRawTextureData(destData);
+            newTex.wrapModeU = textureAttr.ModeS;
+            newTex.wrapModeV = textureAttr.ModeT;
+            newTex.alphaIsTransparency = true;
+            newTex.Apply();
+            return newTex;
         }
     }
 }
