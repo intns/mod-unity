@@ -460,7 +460,8 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 # Whoops
-/[Aa]ssets/~DataDir/
 /[Aa]ssets/[Mm]odels/
 /[Aa]ssets/[Mm]aterials/
 /Assets/Textures
+/Assets/Textures
+/Assets/~DataDir

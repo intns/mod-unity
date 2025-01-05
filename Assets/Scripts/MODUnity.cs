@@ -5,21 +5,7 @@ using System.Linq;
 using BoneTool.Script.Runtime;
 using MODFile;
 using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.XR;
-
-public class MODVertex
-{
-    public Vector3 Position;
-    public Vector3 LocalNormal;
-    public Vector3 LocalTangent;
-    public Color Color;
-    public List<Vector2>[] Uvs = new List<Vector2>[8];
-    public List<BoneWeight1> Weights;
-
-    public Vector4 Tangent => new Vector4(LocalTangent.x, LocalTangent.y, LocalTangent.z, 1);
-}
 
 [Serializable]
 public class MODUnity
@@ -37,8 +23,6 @@ public class MODUnity
 
     [SerializeField]
     private MOD _RawModelFile = new();
-
-    private short[] _ActiveMatrices = new short[10];
 
     public MODUnity(BinaryReader reader)
     {
@@ -67,8 +51,13 @@ public class MODUnity
 
         if (HasTextures())
         {
-            Debug.Log("Textures found: " + _RawModelFile.Textures.Count);
-            CreateTextures();
+            // Convert textures to Unity textures and store them in a dictionary
+            foreach (TextureAttributes texAttr in _RawModelFile.TextureAttributes)
+            {
+                MODFile.Texture texture = _RawModelFile.Textures[texAttr.Index];
+                Texture2D convertedTexture = texture.ConvertToUnityTexture(texAttr);
+                _TextureMap.Add(texAttr, convertedTexture);
+            }
         }
         else
         {
@@ -77,8 +66,9 @@ public class MODUnity
 
         if (flags.HasFlag(CreateFlags.CreateTextures))
         {
-            // Clear the texture directory
             string textureDir = Path.Combine(Application.dataPath, "Textures");
+
+            // Clear the textures directory if it exists, then recreate it
             if (Directory.Exists(textureDir))
             {
                 Directory.Delete(textureDir, true);
@@ -94,10 +84,10 @@ public class MODUnity
                 id++;
 
                 File.WriteAllBytes(path, texture.EncodeToPNG());
-                Debug.Log("Texture saved to: " + path);
             }
         }
 
+        // Don't create a skeleton if there are no vertices or vertex normals to display
         if (!HasVertices() || !HasVertexNormals())
         {
             Debug.Log("Warning: No vertices or vertex normals found in file.");
@@ -108,7 +98,6 @@ public class MODUnity
         {
             if (HasJoints())
             {
-                Debug.Log("Joints found: " + _RawModelFile.Joints.Count);
                 CreateSkeleton(rootObj);
             }
             else
@@ -116,6 +105,8 @@ public class MODUnity
                 Debug.Log("Warning: No joints found in file.");
             }
         }
+
+        // Static mesh support coming soon (TM) lol
     }
 
     public GameObject CreateCollisionMesh()
@@ -148,7 +139,7 @@ public class MODUnity
             if (parent == null)
             {
                 // Set the root node
-                bone.name = "ROOT_NODE";
+                bone.name = "Root";
                 bone.AddComponent<BoneVisualiser>().RootNode = bone.transform;
             }
             else if (_RawModelFile.JointNames.Count > 0)
@@ -159,7 +150,7 @@ public class MODUnity
             else
             {
                 // Otherwise use a generic name
-                bone.name = $"Joint_{jointIndex}";
+                bone.name = $"Bone {jointIndex}";
             }
 
             bone.transform.SetParent((parent != null) ? parent.transform : rootObj, false);
@@ -181,8 +172,7 @@ public class MODUnity
 
             // Apply rotations in Z-Y-X order
             Quaternion rotation = rotationZ * rotationY * rotationX;
-            bone.transform.localPosition = joint.Position.Vector;
-            bone.transform.localRotation = rotation;
+            bone.transform.SetLocalPositionAndRotation(joint.Position.Vector, rotation);
             bone.transform.localScale = joint.Scale.Vector;
 
             bones.Add(bone.transform);
@@ -225,84 +215,81 @@ public class MODUnity
 
     private void CreateSkeleton(Transform rootObj)
     {
-        // Pass 1: Create lists of children for each joint
+        // Build a map of parent joints to their children joints
         int jointCount = _RawModelFile.Joints.Count;
-        List<int>[] jointChildren = new List<int>[jointCount];
+        var jointChildren = new List<int>[jointCount];
+        var boneChildrenMap = new Dictionary<MODFile.Joint, List<MODFile.Joint>>();
         for (int i = 0; i < jointCount; i++)
         {
             jointChildren[i] = new();
-        }
 
-        // Pass 2: Populate joint children based on parent index
-        Dictionary<MODFile.Joint, List<MODFile.Joint>> childrenByJoint = new();
-        for (int i = 0; i < jointCount; i++)
-        {
-            int parentIndex = _RawModelFile.Joints[i].ParentIndex;
-            if (parentIndex != -1)
+            var joint = _RawModelFile.Joints[i];
+
+            // For each joint with a parent, add it to the parent's children list and the bone map
+            if (joint.ParentIndex != -1)
             {
-                jointChildren[parentIndex].Add(i);
+                // Track child indices for each parent joint
+                jointChildren[joint.ParentIndex].Add(i);
 
-                if (!childrenByJoint.ContainsKey(_RawModelFile.Joints[parentIndex]))
+                // Build map of parent joints to their children joints
+                var parentJoint = _RawModelFile.Joints[joint.ParentIndex];
+                if (!boneChildrenMap.TryGetValue(parentJoint, out var children))
                 {
-                    childrenByJoint[_RawModelFile.Joints[parentIndex]] = new List<MODFile.Joint>();
+                    children = new List<MODFile.Joint>();
+                    boneChildrenMap[parentJoint] = children;
                 }
-                childrenByJoint[_RawModelFile.Joints[parentIndex]].Add(_RawModelFile.Joints[i]);
+
+                children.Add(joint);
             }
         }
 
-        // Create Unity bones
+        // Create Unity gameobject skeleton
         List<Transform> bones = CreateBoneTransforms(rootObj, jointChildren);
 
-        // Preallocate memory for the lists
+        // Calculate envelope matrices
+        // TODO: We don't use the envelope inverse matrices anywhere
         List<BoneWeight1[]> envelopeBoneWeights = new(_RawModelFile.Envelopes.Count);
         List<float4x4> envelopeInverseMatrices = new(_RawModelFile.Envelopes.Count);
         SetupEnvelopeMatrices(bones, envelopeBoneWeights, envelopeInverseMatrices);
 
-        LinkedList<MODFile.Joint.MatPoly> sortedMatPolys = new LinkedList<MODFile.Joint.MatPoly>();
-        AddSortedMatPolySiblings(
-            sortedMatPolys,
-            new List<MODFile.Joint> { _RawModelFile.Joints[0] },
-            childrenByJoint,
-            MaterialFlags.TransparentBlend
-        );
-        AddSortedMatPolySiblings(
-            sortedMatPolys,
-            new List<MODFile.Joint> { _RawModelFile.Joints[0] },
-            childrenByJoint,
-            MaterialFlags.AlphaClip
-        );
-        AddSortedMatPolySiblings(
-            sortedMatPolys,
-            new List<MODFile.Joint> { _RawModelFile.Joints[0] },
-            childrenByJoint,
-            MaterialFlags.Opaque
-        );
-
-        // Writes materials
-        List<UnityEngine.Material> unityMaterials = _RawModelFile.Materials.GetUnityMaterials(
+        // Create Unity materials
+        var unityMaterials = _RawModelFile.Materials.GetUnityMaterials(
             _TextureMap,
             _RawModelFile.TextureAttributes
         );
 
-        foreach (var bone in bones)
-        {
-            Debug.Log($"Bone: {bone.name}");
-        }
+        // Sort the polygons by material flags
+        var polygonQueue = new LinkedList<MODFile.Joint.MatPoly>();
+        var rootJoint = new List<MODFile.Joint>() { _RawModelFile.Joints[0] };
+        AddSortedMatPolySiblings(
+            polygonQueue,
+            rootJoint,
+            boneChildrenMap,
+            MaterialFlags.TransparentBlend
+        );
+        AddSortedMatPolySiblings(polygonQueue, rootJoint, boneChildrenMap, MaterialFlags.AlphaClip);
+        AddSortedMatPolySiblings(polygonQueue, rootJoint, boneChildrenMap, MaterialFlags.Opaque);
 
-        foreach (MODFile.Joint.MatPoly matPoly in sortedMatPolys)
+        // Create each mesh in the sorted order
+        int meshIndex = 0;
+        foreach (MODFile.Joint.MatPoly matPolygonData in polygonQueue)
         {
-            MODFile.Mesh mesh = _RawModelFile.Meshes[matPoly.MeshIndex];
-            UnityEngine.Material material = unityMaterials[matPoly.MaterialIndex];
+            MODFile.Mesh mesh = _RawModelFile.Meshes[matPolygonData.MeshIndex];
+            UnityEngine.Material material = unityMaterials[matPolygonData.MaterialIndex];
 
-            GameObject newMesh = AddMesh(
-                mesh,
-                material,
+            DisplayListReader reader = new DisplayListReader(
+                _RawModelFile,
                 bones,
-                envelopeBoneWeights,
-                envelopeInverseMatrices
+                envelopeBoneWeights
             );
 
+            // Read and parse the mesh data
+            DisplayListReader.VertexData vertexData = reader.ReadMesh(mesh);
+
+            // Create the Unity gameobject mesh
+            GameObject newMesh = MeshSetup.CreateSkinnedMesh(vertexData, material, bones);
             newMesh.transform.SetParent(rootObj);
+            newMesh.name = $"Mesh {meshIndex++}";
         }
     }
 
@@ -314,14 +301,9 @@ public class MODUnity
     {
         foreach (Envelope envelope in _RawModelFile.Envelopes)
         {
-            // Validate weights before creating BoneWeight1 array
-            float weightSum = envelope.Weights.Sum();
-            if (!Mathf.Approximately(weightSum, 1f))
-            {
-                Debug.LogError($"Envelope weights don't sum to 1 ({weightSum})");
-            }
-
             BoneWeight1[] boneWeights = new BoneWeight1[envelope.Indices.Count];
+            float4x4 inverseMatrix = float4x4.zero;
+
             for (int i = 0; i < envelope.Indices.Count; i++)
             {
                 boneWeights[i] = new BoneWeight1
@@ -329,50 +311,13 @@ public class MODUnity
                     boneIndex = envelope.Indices[i],
                     weight = envelope.Weights[i],
                 };
-            }
 
-            float4x4 inverseMatrix = float4x4.zero;
-            for (int i = 0; i < envelope.Indices.Count; i++)
-            {
-                boneWeights[i] = new BoneWeight1
-                {
-                    boneIndex = envelope.Indices[i],
-                    weight = envelope.Weights[i]
-                };
-
-                int boneIndex = boneWeights[i].boneIndex;
-                float weight = boneWeights[i].weight;
-
-                float4x4 boneMatrix = bones[boneIndex].localToWorldMatrix;
-                inverseMatrix += boneMatrix * weight;
+                float4x4 boneMatrix = bones[boneWeights[i].boneIndex].localToWorldMatrix;
+                inverseMatrix += boneMatrix * boneWeights[i].weight;
             }
 
             envelopeBoneWeights.Add(boneWeights);
             envelopeInverseMatrices.Add(inverseMatrix);
-        }
-    }
-
-    private GameObject AddMesh(
-        MODFile.Mesh _mesh,
-        UnityEngine.Material _material,
-        IReadOnlyList<Transform> _bones,
-        List<BoneWeight1[]> _boneWeights,
-        List<float4x4> _envelopeInverseMatrices
-    )
-    {
-        DisplayListReader reader = new(_RawModelFile, _bones, _boneWeights);
-        DisplayListReader.VertexData vertexData = reader.ReadMesh(_mesh);
-
-        return MeshSetup.CreateSkinnedMesh(vertexData, _material, _bones, _envelopeInverseMatrices);
-    }
-
-    private void CreateTextures()
-    {
-        foreach (TextureAttributes texAttr in _RawModelFile.TextureAttributes)
-        {
-            MODFile.Texture texture = _RawModelFile.Textures[texAttr.Index];
-            Texture2D convertedTexture = texture.ConvertToUnityTexture(texAttr);
-            _TextureMap.Add(texAttr, convertedTexture);
         }
     }
 }
