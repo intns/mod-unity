@@ -123,9 +123,9 @@ public class MODUnity
         return collision;
     }
 
-    private List<Transform> CreateBoneTransforms(Transform rootObj, List<int>[] jointChildren)
+    private Transform[] CreateBoneTransforms(Transform rootObj, List<int>[] jointChildren)
     {
-        List<Transform> bones = new();
+        Transform[] bones = new Transform[jointChildren.Length];
         Queue<(int, Transform)> jointQueue = new();
 
         jointQueue.Enqueue((0, null));
@@ -175,7 +175,7 @@ public class MODUnity
             bone.transform.SetLocalPositionAndRotation(joint.Position.Vector, rotation);
             bone.transform.localScale = joint.Scale.Vector;
 
-            bones.Add(bone.transform);
+            bones[jointIndex] = bone.transform;
             foreach (int childIndex in jointChildren[jointIndex])
             {
                 jointQueue.Enqueue((childIndex, bone.transform));
@@ -244,7 +244,7 @@ public class MODUnity
         }
 
         // Create Unity gameobject skeleton
-        List<Transform> bones = CreateBoneTransforms(rootObj, jointChildren);
+        Transform[] bones = CreateBoneTransforms(rootObj, jointChildren);
 
         // Calculate envelope matrices
         // TODO: We don't use the envelope inverse matrices anywhere
@@ -294,7 +294,7 @@ public class MODUnity
     }
 
     private void SetupEnvelopeMatrices(
-        List<Transform> bones,
+        Transform[] bones,
         List<BoneWeight1[]> envelopeBoneWeights,
         List<float4x4> envelopeInverseMatrices
     )
