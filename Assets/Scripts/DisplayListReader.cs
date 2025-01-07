@@ -13,12 +13,10 @@ public class DisplayListReader
     {
         public Vector3 Position;
         public Vector3 LocalNormal;
-        public Vector3 LocalTangent;
+        public Vector3? LocalTangent;
         public Color Color;
         public List<Vector2>[] UVs = new List<Vector2>[8];
         public List<BoneWeight1> Weights;
-
-        public Vector4 Tangent => new Vector4(LocalTangent.x, LocalTangent.y, LocalTangent.z, 1);
     }
 
     private class PrimitiveData
@@ -61,7 +59,7 @@ public class DisplayListReader
         _ActiveMatrices = new short[10];
         for (int i = 0; i < _ActiveMatrices.Length; i++)
         {
-            _ActiveMatrices[i] = 0;
+            _ActiveMatrices[i] = -1;
         }
     }
 
@@ -112,11 +110,30 @@ public class DisplayListReader
             vertex.Weights = weights.ToList();
 
             int? boneIndex = boneIndices[vertexIndex];
+            // Vertices with a single bone are in bone space, so we need to
+            // transform them by the bone to get them in world space.
             if (boneIndex.HasValue)
             {
+                var boneMatrix = _Bones[boneIndex.Value].localToWorldMatrix;
+
                 // Single bone influence
-                vertex.Position = _Bones[boneIndex.Value]
-                    .localToWorldMatrix.MultiplyPoint(vertex.Position);
+                vertex.Position = boneMatrix.MultiplyPoint(vertex.Position);
+                vertex.LocalNormal = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalNormal));
+                if (vertex.LocalTangent != null)
+                {
+                    vertex.LocalTangent = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalTangent.Value));
+                }
+            }
+            // Vertices with envelopes are in world space, so their position is
+            // right, but we need to fix the normals to match the rest of the
+            // model.
+            else
+            {
+                vertex.LocalNormal = this.FlipVertexNormal(vertex.LocalNormal);
+                if (vertex.LocalTangent != null)
+                {
+                    vertex.LocalTangent = this.FlipVertexNormal(vertex.LocalTangent.Value);
+                }
             }
         }
 
@@ -145,6 +162,11 @@ public class DisplayListReader
         }
 
         return vertex;
+    }
+
+    private Vector3 FlipVertexNormal(Vector3 vec3)
+    {
+        return new Vector3(vec3.x, vec3.y, -vec3.z);
     }
 
     private void ProcessDisplayList(
@@ -177,9 +199,10 @@ public class DisplayListReader
                 vertexData.Positions.Add(vertex.Position);
                 vertexData.Normals.Add(vertex.LocalNormal);
 
-                if (vertex.LocalTangent != Vector3.zero)
+                if (vertex.LocalTangent != null)
                 {
-                    vertexData.Tangents.Add(vertex.Tangent);
+                    var localTangent = vertex.LocalTangent.Value;
+                    vertexData.Tangents.Add(new Vector4(localTangent.x, localTangent.y, localTangent.z, 0));
                 }
 
                 vertexData.Colors.Add(vertex.Color);

@@ -9,7 +9,7 @@ public static class MeshSetup
     public static GameObject CreateSkinnedMesh(
         DisplayListReader.VertexData vertexData,
         Material material,
-        IReadOnlyList<Transform> bones
+        Transform[] bones
     )
     {
         GameObject gameObj = new("Mesh", new[] { typeof(MeshFilter), typeof(SkinnedMeshRenderer) });
@@ -63,9 +63,8 @@ public static class MeshSetup
 
             mesh.SetBoneWeights(bonesPerVertex, weights);
 
-            Transform rootBone = bones[0];
-            renderer.rootBone = rootBone;
-            renderer.bones = bones.ToArray();
+            renderer.bones = bones;
+            renderer.quality = SkinQuality.Bone4;
             mesh.bindposes = bones.Select(b => b.worldToLocalMatrix).ToArray();
         }
 

@@ -167,7 +167,7 @@ namespace mod.schema
             _Position = GxAttributeType.Index16;
 
             // Process attribute flags
-            for (int i = 0; i < 10; ++i)
+            for (int i = 0; i < 11; ++i)
             {
                 bool isAttributeEnabled = (attributeFlags & 0b1) == 1;
                 attributeFlags >>= 1;
