@@ -13,12 +13,10 @@ public class DisplayListReader
     {
         public Vector3 Position;
         public Vector3 LocalNormal;
-        public Vector3 LocalTangent;
+        public Vector3? LocalTangent;
         public Color Color;
         public List<Vector2>[] UVs = new List<Vector2>[8];
         public List<BoneWeight1> Weights;
-
-        public Vector4 Tangent => new Vector4(LocalTangent.x, LocalTangent.y, LocalTangent.z, 1);
     }
 
     private class PrimitiveData
@@ -177,9 +175,10 @@ public class DisplayListReader
                 vertexData.Positions.Add(vertex.Position);
                 vertexData.Normals.Add(vertex.LocalNormal);
 
-                if (vertex.LocalTangent != Vector3.zero)
+                if (vertex.LocalTangent != null)
                 {
-                    vertexData.Tangents.Add(vertex.Tangent);
+                    var localTangent = vertex.LocalTangent.Value;
+                    vertexData.Tangents.Add(new Vector4(localTangent.x, localTangent.y, localTangent.z, 1));
                 }
 
                 vertexData.Colors.Add(vertex.Color);
