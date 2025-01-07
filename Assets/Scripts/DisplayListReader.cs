@@ -112,9 +112,11 @@ public class DisplayListReader
             int? boneIndex = boneIndices[vertexIndex];
             if (boneIndex.HasValue)
             {
+                var boneMatrix = _Bones[boneIndex.Value].localToWorldMatrix;
+
                 // Single bone influence
-                vertex.Position = _Bones[boneIndex.Value]
-                    .localToWorldMatrix.MultiplyPoint(vertex.Position);
+                vertex.Position = boneMatrix.MultiplyPoint(vertex.Position);
+                vertex.LocalNormal = boneMatrix.MultiplyVector(vertex.LocalNormal);
             }
         }
 
