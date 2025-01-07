@@ -118,10 +118,10 @@ public class DisplayListReader
 
                 // Single bone influence
                 vertex.Position = boneMatrix.MultiplyPoint(vertex.Position);
-                vertex.LocalNormal = boneMatrix.MultiplyVector(vertex.LocalNormal);
+                vertex.LocalNormal = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalNormal));
                 if (vertex.LocalTangent != null)
                 {
-                    vertex.LocalTangent = boneMatrix.MultiplyVector(vertex.LocalTangent.Value);
+                    vertex.LocalTangent = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalTangent.Value));
                 }
             }
             // Vertices with envelopes are in world space, so their position is
@@ -129,10 +129,10 @@ public class DisplayListReader
             // model.
             else
             {
-                vertex.LocalNormal = FlipVec3(vertex.LocalNormal);
+                vertex.LocalNormal = this.FlipVertexNormal(vertex.LocalNormal);
                 if (vertex.LocalTangent != null)
                 {
-                    vertex.LocalTangent = FlipVec3(vertex.LocalTangent.Value);
+                    vertex.LocalTangent = this.FlipVertexNormal(vertex.LocalTangent.Value);
                 }
             }
         }
@@ -164,9 +164,9 @@ public class DisplayListReader
         return vertex;
     }
 
-    private Vector3 FlipVec3(Vector3 vec3)
+    private Vector3 FlipVertexNormal(Vector3 vec3)
     {
-        return new Vector3(-vec3.x, vec3.y, -vec3.z);
+        return new Vector3(vec3.x, vec3.y, -vec3.z);
     }
 
     private void ProcessDisplayList(

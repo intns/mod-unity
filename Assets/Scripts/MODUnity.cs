@@ -155,6 +155,10 @@ public class MODUnity
 
             bone.transform.SetParent((parent != null) ? parent.transform : rootObj, false);
 
+            // For some reason, applying the transforms in a normal way results
+            // in the bones being mirrored across z. We have to apply these
+            // rotations and fiddle with the joint position to get the bones
+            // in the right place.
             Quaternion rotationZ = Quaternion.AngleAxis(
                 -joint.Rotation.Vector.z * Mathf.Rad2Deg,
                 Vector3.back
@@ -173,7 +177,7 @@ public class MODUnity
             // Apply rotations in Z-Y-X order
             Quaternion rotation = rotationZ * rotationY * rotationX;
 
-            bone.transform.SetLocalPositionAndRotation(FlipVec3(joint.Position.Vector), rotation);
+            bone.transform.SetLocalPositionAndRotation(this.FlipPosition(joint.Position.Vector), rotation);
             bone.transform.localScale = joint.Scale.Vector;
 
             bones[jointIndex] = bone.transform;
@@ -186,7 +190,7 @@ public class MODUnity
         return bones;
     }
 
-    private Vector3 FlipVec3(Vector3 vec3) 
+    private Vector3 FlipPosition(Vector3 vec3) 
     {
         return new Vector3(vec3.x, vec3.y, -vec3.z);
     }
