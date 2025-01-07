@@ -59,7 +59,7 @@ public class DisplayListReader
         _ActiveMatrices = new short[10];
         for (int i = 0; i < _ActiveMatrices.Length; i++)
         {
-            _ActiveMatrices[i] = 0;
+            _ActiveMatrices[i] = -1;
         }
     }
 
@@ -110,6 +110,8 @@ public class DisplayListReader
             vertex.Weights = weights.ToList();
 
             int? boneIndex = boneIndices[vertexIndex];
+            // Vertices with a single bone are in bone space, so we need to
+            // transform them by the bone to get them in world space.
             if (boneIndex.HasValue)
             {
                 var boneMatrix = _Bones[boneIndex.Value].localToWorldMatrix;
@@ -117,6 +119,21 @@ public class DisplayListReader
                 // Single bone influence
                 vertex.Position = boneMatrix.MultiplyPoint(vertex.Position);
                 vertex.LocalNormal = boneMatrix.MultiplyVector(vertex.LocalNormal);
+                if (vertex.LocalTangent != null)
+                {
+                    vertex.LocalTangent = boneMatrix.MultiplyVector(vertex.LocalTangent.Value);
+                }
+            }
+            // Vertices with envelopes are in world space, so their position is
+            // right, but we need to fix the normals to match the rest of the
+            // model.
+            else
+            {
+                vertex.LocalNormal = FlipVec3(vertex.LocalNormal);
+                if (vertex.LocalTangent != null)
+                {
+                    vertex.LocalTangent = FlipVec3(vertex.LocalTangent.Value);
+                }
             }
         }
 
@@ -145,6 +162,11 @@ public class DisplayListReader
         }
 
         return vertex;
+    }
+
+    private Vector3 FlipVec3(Vector3 vec3)
+    {
+        return new Vector3(-vec3.x, vec3.y, -vec3.z);
     }
 
     private void ProcessDisplayList(
@@ -180,7 +202,7 @@ public class DisplayListReader
                 if (vertex.LocalTangent != null)
                 {
                     var localTangent = vertex.LocalTangent.Value;
-                    vertexData.Tangents.Add(new Vector4(localTangent.x, localTangent.y, localTangent.z, 1));
+                    vertexData.Tangents.Add(new Vector4(localTangent.x, localTangent.y, localTangent.z, 0));
                 }
 
                 vertexData.Colors.Add(vertex.Color);

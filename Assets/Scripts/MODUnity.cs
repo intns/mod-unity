@@ -156,23 +156,24 @@ public class MODUnity
             bone.transform.SetParent((parent != null) ? parent.transform : rootObj, false);
 
             Quaternion rotationZ = Quaternion.AngleAxis(
-                joint.Rotation.Vector.z * Mathf.Rad2Deg,
-                Vector3.forward
+                -joint.Rotation.Vector.z * Mathf.Rad2Deg,
+                Vector3.back
             );
 
             Quaternion rotationY = Quaternion.AngleAxis(
-                joint.Rotation.Vector.y * Mathf.Rad2Deg,
+                -joint.Rotation.Vector.y * Mathf.Rad2Deg,
                 Vector3.up
             );
 
             Quaternion rotationX = Quaternion.AngleAxis(
-                joint.Rotation.Vector.x * Mathf.Rad2Deg,
+                -joint.Rotation.Vector.x * Mathf.Rad2Deg,
                 Vector3.right
             );
 
             // Apply rotations in Z-Y-X order
             Quaternion rotation = rotationZ * rotationY * rotationX;
-            bone.transform.SetLocalPositionAndRotation(joint.Position.Vector, rotation);
+
+            bone.transform.SetLocalPositionAndRotation(FlipVec3(joint.Position.Vector), rotation);
             bone.transform.localScale = joint.Scale.Vector;
 
             bones[jointIndex] = bone.transform;
@@ -183,6 +184,11 @@ public class MODUnity
         }
 
         return bones;
+    }
+
+    private Vector3 FlipVec3(Vector3 vec3) 
+    {
+        return new Vector3(vec3.x, vec3.y, -vec3.z);
     }
 
     private void AddSortedMatPolySiblings(
