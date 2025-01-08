@@ -64,6 +64,22 @@ namespace MODFile
         {
             return (Vector2)TexCoords[channel].Coordinate[index];
         }
+
+        public void SetTexCoord(int channel, int index, Vector2 texCoord)
+        {
+            TexCoords[channel].Coordinate[index] = texCoord;
+        }
+
+        public void AddTexCoord(int channel, Vector2 texCoord)
+        {
+            while (TexCoords.Count <= channel)
+            {
+                TexCoords.Add(
+                    new() { Channel = TexCoords.Count, Coordinate = new List<Vector2Readable>() }
+                );
+            }
+            TexCoords[channel].Coordinate.Add(texCoord);
+        }
     }
 
     [Serializable]

@@ -119,6 +119,85 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &630864086
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 630864088}
+  - component: {fileID: 630864087}
+  m_Layer: 0
+  m_Name: MOD Exporter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &630864087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 630864086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ec11812c61c1e24f942f143e5e8187c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _Target: {fileID: 0}
+  _ModTarget:
+    Header:
+      _DateTime:
+        Year: 0
+        Month: 0
+        Day: 0
+      Flags: 0
+    Vertices: []
+    VertexNormals: []
+    VertexNBT: []
+    VertexColours: []
+    TextureCoordinates:
+      TexCoords: []
+    Textures: []
+    TextureAttributes: []
+    Materials:
+      _MaterialCount: 0
+      _TevInfoCount: 0
+      _Materials: []
+      _TextureInfos: []
+    VertexMatrices: []
+    Envelopes: []
+    Meshes: []
+    Joints: []
+    JointNames: []
+    CollisionTriangles:
+      TriInfos: []
+      RoomInfos: []
+    CollisionGrid:
+      BoundingBox:
+        m_Center: {x: 0, y: 0, z: 0}
+        m_Extent: {x: 0, y: 0, z: 0}
+      Unknown2: 
+    EndOfFile: 
+--- !u!4 &630864088
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 630864086}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.4582088, y: 3.5637453, z: -1.555323}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -227,7 +306,7 @@ GameObject:
   - component: {fileID: 798121261}
   - component: {fileID: 798121260}
   m_Layer: 0
-  m_Name: Model Conversion Manager
+  m_Name: MOD Importer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -521,4 +600,5 @@ SceneRoots:
   - {fileID: 933226190}
   - {fileID: 1310571212}
   - {fileID: 798121261}
+  - {fileID: 630864088}
   - {fileID: 816485794}

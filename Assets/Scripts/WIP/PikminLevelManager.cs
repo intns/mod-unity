@@ -12,7 +12,7 @@ public enum TimeSettingType
     Morning,
     Day,
     Evening,
-    Movie
+    Movie,
 }
 
 public class Light
@@ -26,117 +26,6 @@ public class Light
     public Vector3 _Direction;
 }
 
-public class TimeSetting
-{
-    public TimeSettingType Type { get; set; }
-    public List<Light> Lights { get; set; }
-    public int[] AmbientColour { get; set; }
-    public int[] SpecularColour { get; set; }
-    public int[] FogColour { get; set; }
-    public float[] FogDist { get; set; }
-
-    public void Parse(ref StreamReader sr)
-    {
-        Lights = new();
-
-        string line;
-        int lightIndex = -1;
-        while ((line = sr.ReadLine()) != null)
-        {
-            if (line.Contains("light"))
-            {
-                Lights.Add(new Light());
-                lightIndex++;
-            }
-            else if (line.Contains("type"))
-            {
-                Lights[lightIndex].Type = int.Parse(Regex.Match(line, @"\d+").Value);
-            }
-            else if (line.Contains("attach"))
-            {
-                Lights[lightIndex].Attach = int.Parse(Regex.Match(line, @"\d+").Value);
-            }
-            else if (line.Contains("fov"))
-            {
-                Lights[lightIndex]._FOV = float.Parse(Regex.Match(line, @"-?\d+\.?\d*").Value);
-            }
-            else if (line.Contains("position"))
-            {
-                float[] values = Array.ConvertAll(
-                    Regex
-                        .Matches(line, @"-?\d+\.?\d*")
-                        .Cast<Match>()
-                        .Select(m => m.Value)
-                        .ToArray(),
-                    float.Parse
-                );
-
-                Debug.Assert(values.Length == 3, "Invalid number of values for light position");
-                Lights[lightIndex]._Position = new Vector3(values[0], values[1], values[2]);
-            }
-            else if (line.Contains("direction"))
-            {
-                float[] values = Array.ConvertAll(
-                    Regex
-                        .Matches(line, @"-?\d+\.?\d*")
-                        .Cast<Match>()
-                        .Select(m => m.Value)
-                        .ToArray(),
-                    float.Parse
-                );
-
-                Debug.Assert(values.Length == 3, "Invalid number of values for light direction");
-                Lights[lightIndex]._Direction = new Vector3(values[0], values[1], values[2]);
-            }
-            else if (line.Contains("colour"))
-            {
-                Lights[lightIndex].Colour = Array.ConvertAll(
-                    Regex.Matches(line, @"\d+").Cast<Match>().Select(m => m.Value).ToArray(),
-                    int.Parse
-                );
-            }
-            else if (line.Contains("ambient"))
-            {
-                line = sr.ReadLine();
-                AmbientColour = Array.ConvertAll(
-                    Regex.Matches(line, @"\d+").Cast<Match>().Select(m => m.Value).ToArray(),
-                    int.Parse
-                );
-            }
-            else if (line.Contains("specular"))
-            {
-                line = sr.ReadLine();
-                SpecularColour = Array.ConvertAll(
-                    Regex.Matches(line, @"\d+").Cast<Match>().Select(m => m.Value).ToArray(),
-                    int.Parse
-                );
-            }
-            else if (line.Contains("fog"))
-            {
-                line = sr.ReadLine();
-                if (line.Contains("colour"))
-                {
-                    FogColour = Array.ConvertAll(
-                        Regex.Matches(line, @"\d+").Cast<Match>().Select(m => m.Value).ToArray(),
-                        int.Parse
-                    );
-                }
-                else if (line.Contains("dist"))
-                {
-                    FogDist = Array.ConvertAll(
-                        Regex
-                            .Matches(line, @"-?\d+\.?\d*")
-                            .Cast<Match>()
-                            .Select(m => m.Value)
-                            .ToArray(),
-                        float.Parse
-                    );
-                }
-            }
-        }
-    }
-}
-
 public class INIFile
 {
     public string _MapPath;
@@ -145,58 +34,6 @@ public class INIFile
     public int _StageIndex;
 
     public float _DayMultiply;
-
-    public List<TimeSetting> TimeSettings { get; set; }
-
-    public void Read(IEnumerable<Token> tokens)
-    {
-        /*string line;
-        while ((line = reader.ReadLine()) != null)
-        {
-            string[] tokens = line.Split(' ');
-
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                string current = tokens[i];
-
-                if (current == "map_file")
-                {
-                    i++;
-                    _MapPath = tokens[i];
-                }
-                else if (current == "cine_file")
-                {
-                    i++;
-                    _CinePath = tokens[i];
-                }
-                else if (current == "stageIndex")
-                {
-                    i++;
-                    _StageIndex = int.Parse(tokens[i]);
-                }
-                else if (current == "day_multiply")
-                {
-                    i++;
-                    _DayMultiply = float.Parse(tokens[i]);
-                }
-                else if (current == "dayMgr")
-                {
-                    i++; // {
-                    reader.ReadLine();
-                    i++; // numSettings
-
-                    Debug.Log(tokens[i]);
-                    int numSettings = int.Parse(tokens[i]);
-                    TimeSettings = new();
-                    for (int j = 0; j < numSettings; j++)
-                    {
-                        TimeSettings[j] = new();
-                        TimeSettings[j].Parse(ref reader);
-                    }
-                }
-            }
-        }*/
-    }
 }
 
 public class PikminLevelManager : MonoBehaviour
@@ -222,11 +59,7 @@ public class PikminLevelManager : MonoBehaviour
 
     private string[] GetStageList()
     {
-        return System.IO.Directory.GetFiles(
-            _DataDirPath + "Stages/",
-            "*.ini",
-            System.IO.SearchOption.TopDirectoryOnly
-        );
+        return Directory.GetFiles(_DataDirPath + "Stages/", "*.ini", SearchOption.TopDirectoryOnly);
     }
 
     private void Awake()
@@ -255,8 +88,5 @@ public class PikminLevelManager : MonoBehaviour
         using StreamReader sr = new(targetPath);
         _SettingsFile = new();
         string script = sr.ReadToEnd();
-        ScriptTokenizer tokenizer = new ScriptTokenizer();
-        IEnumerable<Token> tokens = tokenizer.Tokenize(script);
-        _SettingsFile.Read(tokens);
     }
 }

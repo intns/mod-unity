@@ -27,14 +27,14 @@ public class DisplayListReader
 
     public class VertexData
     {
-        public List<Vector3> Positions { get; } = new();
-        public List<Vector3> Normals { get; } = new();
-        public List<Vector4> Tangents { get; } = new();
-        public List<Color> Colors { get; } = new();
-        public List<Vector2>[] UVs { get; } = new List<Vector2>[8];
-        public List<BoneWeight1[]> WeightsByVertex { get; set; } = new();
-        public List<int> BoneCounts { get; } = new();
-        public List<int> Triangles { get; } = new();
+        public List<Vector3> Positions = new();
+        public List<Vector3> Normals = new();
+        public List<Vector4> Tangents = new();
+        public List<Color> Colors = new();
+        public List<Vector2>[] UVs = new List<Vector2>[8];
+        public List<BoneWeight1[]> WeightsByVertex = new();
+        public List<int> BoneCounts = new();
+        public List<int> Triangles = new();
     }
 
     private readonly MOD _RawFile;
@@ -118,10 +118,14 @@ public class DisplayListReader
 
                 // Single bone influence
                 vertex.Position = boneMatrix.MultiplyPoint(vertex.Position);
-                vertex.LocalNormal = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalNormal));
+                vertex.LocalNormal = boneMatrix.MultiplyVector(
+                    FlipVertexNormal(vertex.LocalNormal)
+                );
                 if (vertex.LocalTangent != null)
                 {
-                    vertex.LocalTangent = boneMatrix.MultiplyVector(FlipVertexNormal(vertex.LocalTangent.Value));
+                    vertex.LocalTangent = boneMatrix.MultiplyVector(
+                        FlipVertexNormal(vertex.LocalTangent.Value)
+                    );
                 }
             }
             // Vertices with envelopes are in world space, so their position is
@@ -202,7 +206,9 @@ public class DisplayListReader
                 if (vertex.LocalTangent != null)
                 {
                     var localTangent = vertex.LocalTangent.Value;
-                    vertexData.Tangents.Add(new Vector4(localTangent.x, localTangent.y, localTangent.z, 0));
+                    vertexData.Tangents.Add(
+                        new Vector4(localTangent.x, localTangent.y, localTangent.z, 0)
+                    );
                 }
 
                 vertexData.Colors.Add(vertex.Color);
@@ -275,7 +281,6 @@ public class DisplayListReader
         _ActiveMatrices[activeMatrixIndex] = vertexMatrixIndex;
         int attachmentIndex = _RawFile.VertexMatrices[vertexMatrixIndex].Index;
 
-        // TODO: here?
         if (attachmentIndex >= 0)
         {
             int bIndex = attachmentIndex;

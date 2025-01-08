@@ -9,7 +9,8 @@ namespace MODFile
     public enum MODFlags : byte
     {
         None = 0x00,
-        UseNBT = 0x01
+        UseNBT = 0x01,
+        UseClassicScale = 0x08, // If not set, use SoftImage scale
     }
 
     [Serializable]

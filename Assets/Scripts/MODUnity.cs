@@ -22,11 +22,16 @@ public class MODUnity
     public readonly Dictionary<TextureAttributes, Texture2D> _TextureMap = new();
 
     [SerializeField]
-    private MOD _RawModelFile = new();
+    public MOD _RawModelFile = new();
 
     public MODUnity(BinaryReader reader)
     {
         _RawModelFile.Read(reader);
+    }
+
+    public MODUnity(MOD model)
+    {
+        _RawModelFile = model;
     }
 
     public bool HasVertices() => _RawModelFile.Vertices.Count > 0;
@@ -94,15 +99,36 @@ public class MODUnity
             return;
         }
 
-        if (flags.HasFlag(CreateFlags.CreateSkeleton))
+        if (flags.HasFlag(CreateFlags.CreateSkeleton) && HasJoints())
         {
-            if (HasJoints())
+            CreateSkeleton(rootObj);
+        }
+        else
+        {
+            // Create a mesh if no skeleton is required
+            Debug.Log("Creating static mesh.");
+
+            // Create Unity materials
+            var unityMaterials = _RawModelFile.Materials.GetUnityMaterials(
+                _TextureMap,
+                _RawModelFile.TextureAttributes
+            );
+
+            // Create each mesh in the sorted order
+            int meshIndex = 0;
+            foreach (var mesh in _RawModelFile.Meshes)
             {
-                CreateSkeleton(rootObj);
-            }
-            else
-            {
-                Debug.Log("Warning: No joints found in file.");
+                // UnityEngine.Material material = unityMaterials[meshIndex];
+
+                DisplayListReader reader = new DisplayListReader(_RawModelFile, null, null);
+
+                // Read and parse the mesh data
+                DisplayListReader.VertexData vertexData = reader.ReadMesh(mesh);
+
+                // Create the Unity gameobject mesh
+                GameObject newMesh = MeshSetup.CreateStaticMesh(vertexData, null);
+                newMesh.transform.SetParent(rootObj);
+                newMesh.name = $"Mesh {meshIndex++}";
             }
         }
 
@@ -177,7 +203,10 @@ public class MODUnity
             // Apply rotations in Z-Y-X order
             Quaternion rotation = rotationZ * rotationY * rotationX;
 
-            bone.transform.SetLocalPositionAndRotation(this.FlipPosition(joint.Position.Vector), rotation);
+            bone.transform.SetLocalPositionAndRotation(
+                this.FlipPosition(joint.Position.Vector),
+                rotation
+            );
             bone.transform.localScale = joint.Scale.Vector;
 
             bones[jointIndex] = bone.transform;
@@ -190,7 +219,7 @@ public class MODUnity
         return bones;
     }
 
-    private Vector3 FlipPosition(Vector3 vec3) 
+    private Vector3 FlipPosition(Vector3 vec3)
     {
         return new Vector3(vec3.x, vec3.y, -vec3.z);
     }
